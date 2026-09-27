@@ -44,7 +44,7 @@ async function fetchAllInsights(url: string, token: string): Promise<InsightRow[
   let next: string | null = url;
 
   while (next) {
-    const response = await fetch(next, {
+    const response: Response = await fetch(next, {
       headers: { Authorization: "Bearer " + token },
       cache: "no-store",
     });
@@ -54,7 +54,11 @@ async function fetchAllInsights(url: string, token: string): Promise<InsightRow[
       throw new Error("Meta API " + response.status + ": " + body);
     }
 
-    const json = await response.json();
+    const json: {
+      data?: InsightRow[];
+      paging?: { next?: string };
+    } = await response.json();
+
     rows.push(...(json.data ?? []));
     next = json.paging?.next ?? null;
   }
