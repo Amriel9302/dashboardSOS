@@ -210,7 +210,8 @@ export async function POST(request: Request) {
               city_confidence = coalesce(excluded.city_confidence, leads.city_confidence),
               city_source = coalesce(excluded.city_source, leads.city_source),
               first_message = coalesce(leads.first_message, excluded.first_message),
-              last_message_at = now()
+              last_message_at = now(),
+              updated_at = now()
           `;
         }
       }
