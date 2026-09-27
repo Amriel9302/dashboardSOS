@@ -495,7 +495,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                   <IntegrationBadge ok={data.integrations.database} />
                 </div>
                 <p>Armazena leads, mensagens, identificação de cidade e métricas diárias dos anúncios.</p>
-                <small>Supabase configurado somente no servidor.</small>
+                <small>Neon configurado somente no servidor.</small>
               </div>
             </article>
           </section>
