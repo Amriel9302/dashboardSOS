@@ -117,7 +117,8 @@ export async function PATCH(
         city = ${city},
         neighborhood = ${neighborhood},
         city_source = ${citySource},
-        city_confidence = ${cityConfidence}
+        city_confidence = ${cityConfidence},
+        updated_at = now()
       where id = ${id}::uuid
       returning *
     `) as Record<string, unknown>[];
