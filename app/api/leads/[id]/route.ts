@@ -108,7 +108,7 @@ export async function PATCH(
         : null
       : current.city_confidence;
 
-    const updated = await sql`
+    const updated = (await sql`
       update public.leads
       set
         status = ${status},
@@ -120,7 +120,7 @@ export async function PATCH(
         city_confidence = ${cityConfidence}
       where id = ${id}::uuid
       returning *
-    `;
+    `) as Record<string, unknown>[];
 
     return NextResponse.json({ ok: true, lead: updated[0] });
   } catch (error) {
