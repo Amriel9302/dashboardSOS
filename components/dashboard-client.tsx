@@ -22,6 +22,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { DashboardData, Lead, LeadStatus } from "@/lib/types";
 
 type Tab = "overview" | "leads" | "cities" | "ads" | "integrations";
@@ -79,7 +80,13 @@ function IntegrationBadge({ ok }: { ok: boolean }) {
   );
 }
 
-function LeadTable({ leads }: { leads: Lead[] }) {
+function LeadTable({
+  leads,
+  onStatusChange,
+}: {
+  leads: Lead[];
+  onStatusChange?: (id: string, status: LeadStatus) => void;
+}) {
   return (
     <div className="table-wrap">
       <table>
@@ -121,7 +128,24 @@ function LeadTable({ leads }: { leads: Lead[] }) {
                   <span>{lead.adName || "Sem anúncio identificado"}</span>
                 </div>
               </td>
-              <td><StatusPill status={lead.status} /></td>
+              <td>
+                {onStatusChange ? (
+                  <select
+                    className={"status-select status-select--" + lead.status}
+                    value={lead.status}
+                    onChange={(event) =>
+                      onStatusChange(lead.id, event.target.value as LeadStatus)
+                    }
+                    aria-label={"Alterar status de " + (lead.name || lead.phone)}
+                  >
+                    {Object.entries(statusLabel).map(([value, label]) => (
+                      <option value={value} key={value}>{label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <StatusPill status={lead.status} />
+                )}
+              </td>
               <td>
                 <b>
                   {lead.status === "fechado" && lead.saleValue != null
@@ -141,6 +165,7 @@ function LeadTable({ leads }: { leads: Lead[] }) {
 }
 
 export default function DashboardClient({ data }: { data: DashboardData }) {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("overview");
   const [query, setQuery] = useState("");
 
@@ -163,6 +188,21 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
   }, [data.leads, query]);
 
   const maxCityLeads = Math.max(...data.cities.map((city) => city.leads), 1);
+
+  async function changeStatus(id: string, status: LeadStatus) {
+    const response = await fetch("/api/leads/" + id, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      alert("Não foi possível alterar o status deste lead.");
+      return;
+    }
+
+    router.refresh();
+  }
 
   return (
     <main className="app-shell">
@@ -336,7 +376,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
               <span><b>{filteredLeads.length}</b> leads encontrados</span>
               <span className="muted">Cidade é identificada automaticamente quando possível.</span>
             </div>
-            <LeadTable leads={filteredLeads} />
+            <LeadTable leads={filteredLeads} onStatusChange={data.isDemo ? undefined : changeStatus} />
           </section>
         )}
 
