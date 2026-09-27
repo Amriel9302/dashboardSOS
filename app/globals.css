@@ -585,6 +585,44 @@ td b {
   background: var(--red-soft);
 }
 
+
+.status-select {
+  border: 0;
+  outline: 0;
+  padding: 6px 26px 6px 9px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.status-select--novo {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.status-select--qualificado {
+  color: #6a55a8;
+  background: #f1edff;
+}
+
+.status-select--orcamento {
+  color: var(--yellow);
+  background: var(--yellow-soft);
+}
+
+.status-select--fechado {
+  color: var(--green-strong);
+  background: var(--green-soft);
+}
+
+.status-select--perdido,
+.status-select--fora_area {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
 .icon-button {
   width: 30px;
   height: 30px;
