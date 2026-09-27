@@ -163,7 +163,7 @@ export async function POST(request: Request) {
           const source = referral.source_id ? "Meta Ads" : "WhatsApp";
           const adId = existing?.ad_id ?? referral.source_id ?? null;
           const ctwaClid = existing?.ctwa_clid ?? referral.ctwa_clid ?? null;
-          const firstMessage = existing?.first_message ?? body || null;
+          const firstMessage = existing?.first_message ?? (body || null);
 
           await sql`
             insert into public.leads (
