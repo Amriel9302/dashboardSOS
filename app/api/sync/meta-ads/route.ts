@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getDb } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -64,29 +64,39 @@ async function fetchAllInsights(url: string, token: string): Promise<InsightRow[
 
 export async function GET(request: Request) {
   if (!authorized(request)) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized" },
+      { status: 401 },
+    );
   }
 
-  const supabase = getSupabaseAdmin();
+  const sql = getDb();
   const token = process.env.META_ACCESS_TOKEN;
   const adAccount = process.env.META_AD_ACCOUNT_ID;
   const version = process.env.META_GRAPH_VERSION;
 
-  if (!supabase || !token || !adAccount || !version) {
+  if (!sql || !token || !adAccount || !version) {
     return NextResponse.json(
       {
         ok: false,
         error:
-          "Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, META_ACCESS_TOKEN, META_AD_ACCOUNT_ID and META_GRAPH_VERSION.",
+          "Configure DATABASE_URL, META_ACCESS_TOKEN, META_AD_ACCOUNT_ID and META_GRAPH_VERSION.",
       },
       { status: 503 },
     );
   }
 
   try {
-    const accountId = adAccount.startsWith("act_") ? adAccount : "act_" + adAccount;
+    const accountId = adAccount.startsWith("act_")
+      ? adAccount
+      : "act_" + adAccount;
+
     const endpoint = new URL(
-      "https://graph.facebook.com/" + version + "/" + accountId + "/insights",
+      "https://graph.facebook.com/" +
+        version +
+        "/" +
+        accountId +
+        "/insights",
     );
 
     endpoint.searchParams.set(
@@ -118,12 +128,12 @@ export async function GET(request: Request) {
       .filter((row) => row.ad_id)
       .map((row) => ({
         date: row.date_start,
-        campaign_id: row.campaign_id ?? null,
-        campaign_name: row.campaign_name ?? null,
-        adset_id: row.adset_id ?? null,
-        adset_name: row.adset_name ?? null,
-        ad_id: row.ad_id as string,
-        ad_name: row.ad_name ?? null,
+        campaignId: row.campaign_id ?? null,
+        campaignName: row.campaign_name ?? null,
+        adsetId: row.adset_id ?? null,
+        adsetName: row.adset_name ?? null,
+        adId: row.ad_id as string,
+        adName: row.ad_name ?? null,
         spend: Number(row.spend ?? 0),
         impressions: Number(row.impressions ?? 0),
         reach: Number(row.reach ?? 0),
@@ -131,37 +141,70 @@ export async function GET(request: Request) {
         conversations: conversationCount(row.actions),
       }));
 
-    if (normalized.length) {
-      const { error } = await supabase
-        .from("ad_metrics_daily")
-        .upsert(normalized, { onConflict: "date,ad_id" });
+    for (const row of normalized) {
+      await sql`
+        insert into public.ad_metrics_daily (
+          date,
+          campaign_id,
+          campaign_name,
+          adset_id,
+          adset_name,
+          ad_id,
+          ad_name,
+          spend,
+          impressions,
+          reach,
+          conversations,
+          clicks
+        )
+        values (
+          ${row.date}::date,
+          ${row.campaignId},
+          ${row.campaignName},
+          ${row.adsetId},
+          ${row.adsetName},
+          ${row.adId},
+          ${row.adName},
+          ${row.spend},
+          ${row.impressions},
+          ${row.reach},
+          ${row.conversations},
+          ${row.clicks}
+        )
+        on conflict (date, ad_id) do update
+        set
+          campaign_id = excluded.campaign_id,
+          campaign_name = excluded.campaign_name,
+          adset_id = excluded.adset_id,
+          adset_name = excluded.adset_name,
+          ad_name = excluded.ad_name,
+          spend = excluded.spend,
+          impressions = excluded.impressions,
+          reach = excluded.reach,
+          conversations = excluded.conversations,
+          clicks = excluded.clicks
+      `;
 
-      if (error) throw error;
-    }
-
-    const { data: ads } = await supabase
-      .from("ad_metrics_daily")
-      .select("ad_id, campaign_id, campaign_name, adset_id, adset_name, ad_name");
-
-    for (const ad of ads ?? []) {
-      await supabase
-        .from("leads")
-        .update({
-          campaign_id: ad.campaign_id,
-          campaign_name: ad.campaign_name,
-          adset_id: ad.adset_id,
-          adset_name: ad.adset_name,
-          ad_name: ad.ad_name,
-        })
-        .eq("ad_id", ad.ad_id)
-        .is("ad_name", null);
+      await sql`
+        update public.leads
+        set
+          campaign_id = coalesce(campaign_id, ${row.campaignId}),
+          campaign_name = coalesce(campaign_name, ${row.campaignName}),
+          adset_id = coalesce(adset_id, ${row.adsetId}),
+          adset_name = coalesce(adset_name, ${row.adsetName}),
+          ad_name = coalesce(ad_name, ${row.adName})
+        where ad_id = ${row.adId}
+      `;
     }
 
     return NextResponse.json({ ok: true, rows: normalized.length });
   } catch (error) {
     console.error("Meta sync failed", error);
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        ok: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 },
     );
   }
