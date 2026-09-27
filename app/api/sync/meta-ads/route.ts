@@ -186,7 +186,8 @@ export async function GET(request: Request) {
           impressions = excluded.impressions,
           reach = excluded.reach,
           conversations = excluded.conversations,
-          clicks = excluded.clicks
+          clicks = excluded.clicks,
+          updated_at = now()
       `;
 
       await sql`
