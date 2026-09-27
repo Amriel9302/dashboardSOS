@@ -81,21 +81,6 @@ create table if not exists public.location_aliases (
   created_at timestamptz not null default now()
 );
 
-create or replace function public.touch_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
-drop trigger if exists leads_touch_updated_at on public.leads;
-create trigger leads_touch_updated_at
-before update on public.leads
-for each row execute function public.touch_updated_at();
-
 drop trigger if exists ad_metrics_touch_updated_at on public.ad_metrics_daily;
 create trigger ad_metrics_touch_updated_at
 before update on public.ad_metrics_daily
